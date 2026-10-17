@@ -2,7 +2,7 @@ import { apiClient } from '@/services/apiClient';
 import { API_ENDPOINTS } from '@/services/endpoints';
 import { UploadItem } from '@/types';
 import { AxiosProgressEvent } from 'axios';
-import { mockUploads } from '@/services/mockData';
+import { mockUploads, getStoredMockUploads, saveStoredMockUploads } from '@/services/mockData';
 
 export interface UploadOptions {
   videoFile: File;
@@ -21,15 +21,16 @@ export interface DirectUploadInitiateResponse {
 }
 
 export const uploadApi = {
-  getUploads: async (): Promise<UploadItem[]> => {
+  getUploads: async (mineOnly = false): Promise<UploadItem[]> => {
     try {
-      const response = await apiClient.get<any>(API_ENDPOINTS.UPLOADS.LIST);
+      const url = mineOnly ? `${API_ENDPOINTS.UPLOADS.LIST}?mine=true` : API_ENDPOINTS.UPLOADS.LIST;
+      const response = await apiClient.get<any>(url);
       const data = response.data?.data || response.data;
       if (Array.isArray(data)) return data;
       return data.uploads || data.items || [];
     } catch (err: any) {
       if (err?.isNetworkError || !err?.statusCode) {
-        return mockUploads;
+        return getStoredMockUploads();
       }
       throw err;
     }
@@ -42,15 +43,17 @@ export const uploadApi = {
       return data.upload || data;
     } catch (err: any) {
       if (err?.isNetworkError || !err?.statusCode) {
-        const found = mockUploads.find((u) => u._id === id);
+        const stored = getStoredMockUploads();
+        const found = stored.find((u) => u._id === id);
         if (found) {
           // If in demo processing state, simulate completing after initial check
           if (found.status === 'processing' || found.status === 'uploaded') {
             const ageMs = Date.now() - new Date(found.createdAt).getTime();
-            if (ageMs > 5000) {
+            if (ageMs > 4000) {
               found.status = 'completed';
               found.detectionCount = 7;
               found.processedAt = new Date().toISOString();
+              saveStoredMockUploads(stored);
             }
           }
           return found;
@@ -111,6 +114,7 @@ export const uploadApi = {
         const newUpload: UploadItem = {
           _id: newId,
           filename: options.videoFile.name,
+          originalFilename: options.videoFile.name,
           status: 'processing',
           detectionCount: 0,
           createdAt: new Date().toISOString(),
@@ -118,7 +122,9 @@ export const uploadApi = {
           isDemo: true,
         };
 
-        mockUploads.unshift(newUpload);
+        const currentUploads = getStoredMockUploads();
+        currentUploads.unshift(newUpload);
+        saveStoredMockUploads(currentUploads);
         return newUpload;
       }
       throw err;
@@ -144,8 +150,9 @@ export const uploadApi = {
       await apiClient.delete(API_ENDPOINTS.UPLOADS.DETAIL(id));
     } catch (err: any) {
       if (err?.isNetworkError || !err?.statusCode) {
-        const idx = mockUploads.findIndex((u) => u._id === id);
-        if (idx !== -1) mockUploads.splice(idx, 1);
+        const currentUploads = getStoredMockUploads();
+        const updated = currentUploads.filter((u) => u._id !== id);
+        saveStoredMockUploads(updated);
         return;
       }
       throw err;

@@ -53,6 +53,7 @@ export interface UploadItem {
   _id: string;
   filename: string;
   originalFilename?: string;
+  uploaderId?: string;
   status: UploadStatus;
   detectionCount: number;
   createdAt: string;

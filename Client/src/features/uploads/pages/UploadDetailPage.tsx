@@ -55,6 +55,15 @@ export const UploadDetailPage: React.FC = () => {
     refetchIntervalInBackground: false,
   });
 
+  React.useEffect(() => {
+    if (upload?.status === 'completed') {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UPLOADS() });
+      queryClient.invalidateQueries({ queryKey: ['uploads'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD_STATS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ISSUES() });
+    }
+  }, [upload?.status, queryClient]);
+
   const deleteMutation = useMutation({
     mutationFn: (uploadId: string) => uploadApi.deleteUpload(uploadId),
     onSuccess: () => {

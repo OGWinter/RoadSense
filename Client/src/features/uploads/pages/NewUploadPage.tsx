@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadApi } from '../uploadApi';
+import { QUERY_KEYS } from '@/app/queryClient';
 import { useCameraRecorder } from '@/hooks/useCameraRecorder';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -78,8 +79,11 @@ export const NewUploadPage: React.FC = () => {
     },
     onSuccess: (upload) => {
       toast.success('Survey video submitted successfully to AI processing pipeline');
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UPLOADS() });
       queryClient.invalidateQueries({ queryKey: ['uploads'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD_STATS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ISSUES() });
+      queryClient.refetchQueries({ queryKey: ['uploads'] });
 
       // Clean up camera resources if active
       camera.stopCamera();

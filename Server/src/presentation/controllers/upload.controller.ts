@@ -41,8 +41,9 @@ export class UploadController {
     try {
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      const mineOnly = req.query.mine === 'true' || req.query.mine === '1';
 
-      const result = await this.uploadService.listUploads(req.user!, page, limit);
+      const result = await this.uploadService.listUploads(req.user!, page, limit, mineOnly);
 
       res.status(200).json({
         success: true,

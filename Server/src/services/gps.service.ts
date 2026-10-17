@@ -24,7 +24,7 @@ export class GpsService {
    * Enforces planetary coordinate bounds [-90, 90] and [-180, 180] and sample count limit.
    */
   async parseGpsFile(filePath: string, maxSamples = 10000): Promise<GpsParseResult> {
-    if (!filePath || !fs.existsSync(filePath)) {
+    if (!filePath) {
       return {
         points: [],
         format: 'none',
@@ -34,18 +34,41 @@ export class GpsService {
     }
 
     try {
-      const stats = await fs.promises.stat(filePath);
-      if (stats.size > 10 * 1024 * 1024) {
-        return {
-          points: [],
-          format: 'csv',
-          status: 'error',
-          sampleCount: 0,
-          error: 'GPS track file exceeds maximum allowed size of 10MB'
-        };
-      }
+      let content: string = '';
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        const res = await fetch(filePath);
+        if (!res.ok) {
+          return {
+            points: [],
+            format: 'none',
+            status: 'missing',
+            sampleCount: 0
+          };
+        }
+        content = await res.text();
+      } else {
+        if (!fs.existsSync(filePath)) {
+          return {
+            points: [],
+            format: 'none',
+            status: 'missing',
+            sampleCount: 0
+          };
+        }
 
-      const content = await fs.promises.readFile(filePath, 'utf-8');
+        const stats = await fs.promises.stat(filePath);
+        if (stats.size > 10 * 1024 * 1024) {
+          return {
+            points: [],
+            format: 'csv',
+            status: 'error',
+            sampleCount: 0,
+            error: 'GPS track file exceeds maximum allowed size of 10MB'
+          };
+        }
+
+        content = await fs.promises.readFile(filePath, 'utf-8');
+      }
       const trimmed = content.trim();
 
       // Detect JSON array format

@@ -3,7 +3,8 @@ import { z } from 'zod';
 
 export const uploadQuerySchema = z.object({
   page: z.union([z.string(), z.number()]).transform((val) => Math.max(1, typeof val === 'number' ? val : parseInt(val, 10) || 1)).optional(),
-  limit: z.union([z.string(), z.number()]).transform((val) => Math.min(100, Math.max(1, typeof val === 'number' ? val : parseInt(val, 10) || 20))).optional()
+  limit: z.union([z.string(), z.number()]).transform((val) => Math.min(100, Math.max(1, typeof val === 'number' ? val : parseInt(val, 10) || 20))).optional(),
+  mine: z.union([z.string(), z.boolean()]).optional()
 });
 
 export const uploadMetadataSchema = z.object({

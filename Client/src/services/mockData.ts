@@ -5,8 +5,28 @@ export const MOCK_USERS: Record<string, User> = {};
 // Clean in-memory issues list - no dummy items
 export let mockIssues: Issue[] = [];
 
-// Clean in-memory uploads list - no dummy items
-export let mockUploads: UploadItem[] = [];
+const UPLOADS_STORAGE_KEY = 'roadsense_mock_uploads';
+
+export function getStoredMockUploads(): UploadItem[] {
+  try {
+    const raw = localStorage.getItem(UPLOADS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return mockUploads;
+}
+
+export function saveStoredMockUploads(items: UploadItem[]) {
+  mockUploads = items;
+  try {
+    localStorage.setItem(UPLOADS_STORAGE_KEY, JSON.stringify(items));
+  } catch {}
+}
+
+// In-memory uploads list with localStorage initial state
+export let mockUploads: UploadItem[] = getStoredMockUploads();
 
 export function getMockDashboardStats(): DashboardStats {
   return {

@@ -123,9 +123,10 @@ export class UploadService {
   async listUploads(
     user: IUserPayload,
     page = 1,
-    limit = 20
+    limit = 20,
+    mineOnly = false
   ): Promise<{ uploads: UploadDTO[]; total: number; page: number; limit: number }> {
-    if (user.role === 'volunteer') {
+    if (mineOnly) {
       return this.uploadRepo.findByUploader(user.userId, page, limit);
     }
     return this.uploadRepo.findAll(page, limit);
@@ -135,11 +136,6 @@ export class UploadService {
     const upload = await this.uploadRepo.findById(id);
     if (!upload) {
       throw new NotFoundError('Upload not found');
-    }
-
-    // Volunteers can only view their own uploads
-    if (user.role === 'volunteer' && upload.uploaderId !== user.userId) {
-      throw new ForbiddenError('You do not have permission to view this upload');
     }
 
     return upload;

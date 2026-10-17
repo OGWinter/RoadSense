@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { uploadApi } from '../uploadApi';
@@ -29,6 +29,7 @@ import {
   ExternalLink,
   RefreshCw,
   Trash2,
+  UserCheck,
 } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
 
@@ -36,22 +37,49 @@ export const UploadsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
   const queryClient = useQueryClient();
+  const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
 
   const {
-    data: uploads = [],
+    data: rawUploads = [],
     isLoading,
     isError,
     error,
     refetch,
+    isFetching,
   } = useQuery({
     queryKey: QUERY_KEYS.UPLOADS(),
-    queryFn: uploadApi.getUploads,
+    queryFn: () => uploadApi.getUploads(false),
+    staleTime: 5000,
+    refetchOnMount: 'always',
+    refetchInterval: (query) => {
+      const list = query.state.data;
+      if (
+        Array.isArray(list) &&
+        list.some((u) => u.status === 'processing' || u.status === 'uploaded')
+      ) {
+        return 3000;
+      }
+      return false;
+    },
   });
+
+  const uploads = useMemo(() => {
+    if (viewMode === 'mine' && user?.id) {
+      return rawUploads.filter((u) => u.uploaderId === user.id);
+    }
+    return rawUploads;
+  }, [rawUploads, viewMode, user?.id]);
+
+  const myUploadsCount = useMemo(() => {
+    if (!user?.id) return 0;
+    return rawUploads.filter((u) => u.uploaderId === user.id).length;
+  }, [rawUploads, user?.id]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => uploadApi.deleteUpload(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UPLOADS() });
+      queryClient.invalidateQueries({ queryKey: ['uploads'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD_STATS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ISSUES() });
     },
@@ -61,7 +89,7 @@ export const UploadsPage: React.FC = () => {
     e.stopPropagation();
     if (
       window.confirm(
-        `Are you sure you want to permanently delete "${name}"?\nThis will remove the video from Cloudinary / storage and delete all associated road defects.`
+        `Are you sure you want to permanently delete "${name}"?\nThis will remove the video from storage and delete all associated road defects.`
       )
     ) {
       deleteMutation.mutate(id);
@@ -105,9 +133,10 @@ export const UploadsPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
+              disabled={isFetching}
               className="gap-1.5"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button asChild size="sm" className="gap-1.5 shadow-sm">
@@ -119,6 +148,32 @@ export const UploadsPage: React.FC = () => {
           </div>
         }
       />
+
+      {/* Tabs / Filter Controls */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={viewMode === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('all')}
+          className="text-xs h-8 gap-1.5 shadow-sm"
+        >
+          <span>All City Surveys</span>
+          <Badge variant={viewMode === 'all' ? 'secondary' : 'outline'} className="ml-1 text-[10px] px-1.5 py-0 font-mono">
+            {rawUploads.length}
+          </Badge>
+        </Button>
+        <Button
+          variant={viewMode === 'mine' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('mine')}
+          className="text-xs h-8 gap-1.5 shadow-sm"
+        >
+          <span>My Surveys</span>
+          <Badge variant={viewMode === 'mine' ? 'secondary' : 'outline'} className="ml-1 text-[10px] px-1.5 py-0 font-mono">
+            {myUploadsCount}
+          </Badge>
+        </Button>
+      </div>
 
       {isError && (
         <Alert variant="destructive">
@@ -178,7 +233,14 @@ export const UploadsPage: React.FC = () => {
                         <FileVideo className="h-4 w-4" />
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground text-sm">{item.originalFilename || item.filename}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-foreground text-sm">{item.originalFilename || item.filename}</p>
+                          {item.uploaderId && user?.id && item.uploaderId === user.id && (
+                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-[10px] px-1.5 py-0">
+                              My Survey
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-[11px] font-mono text-muted-foreground">{item._id}</p>
                       </div>
                     </div>
@@ -207,7 +269,7 @@ export const UploadsPage: React.FC = () => {
                         <span>Pipeline</span>
                         <ExternalLink className="h-3 w-3" />
                       </Button>
-                      {(user?.role === 'admin' || user?.role === 'volunteer') && (
+                      {(user?.role === 'admin' || (item.uploaderId && user?.id && item.uploaderId === user.id)) && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -220,7 +282,7 @@ export const UploadsPage: React.FC = () => {
                             )
                           }
                           className="h-8 px-2 gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          title="Delete video from Cloudinary & database"
+                          title="Delete video from storage & database"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           <span className="sr-only">Delete</span>

@@ -5,11 +5,13 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { IStorageProvider, FilePayload } from './storage.interface';
+import { LocalStorageProvider } from './local.storage';
 import { env } from '../../config/env';
 import { logger } from '../../shared/logger';
 
 export class CloudinaryStorageProvider implements IStorageProvider {
   private isConfigured = false;
+  private localStorage = new LocalStorageProvider();
 
   constructor() {
     if (env.CLOUDINARY_URL) {
@@ -72,45 +74,52 @@ export class CloudinaryStorageProvider implements IStorageProvider {
     );
 
     let result: UploadApiResponse;
+    try {
+      if (file.path && fs.existsSync(file.path)) {
+        result = await cloudinary.uploader.upload(file.path, {
+          folder: 'roadsense',
+          resource_type: resourceType,
+          use_filename: true,
+          unique_filename: true
+        });
 
-    if (file.path && fs.existsSync(file.path)) {
-      result = await cloudinary.uploader.upload(file.path, {
-        folder: 'roadsense',
-        resource_type: resourceType,
-        use_filename: true,
-        unique_filename: true
-      });
-
-      // Cleanup local temp multer file after successful upload to cloud
-      await fs.promises.unlink(file.path).catch(() => {});
-    } else if (file.buffer) {
-      result = await new Promise<UploadApiResponse>((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'roadsense',
-            resource_type: resourceType,
-            filename_override: file.originalname
-          },
-          (error, res) => {
-            if (error || !res) {
-              reject(error || new Error('Cloudinary buffer upload failed'));
-            } else {
-              resolve(res);
+        // Cleanup local temp multer file after successful upload to cloud
+        await fs.promises.unlink(file.path).catch(() => {});
+      } else if (file.buffer) {
+        result = await new Promise<UploadApiResponse>((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'roadsense',
+              resource_type: resourceType,
+              filename_override: file.originalname
+            },
+            (error, res) => {
+              if (error || !res) {
+                reject(error || new Error('Cloudinary buffer upload failed'));
+              } else {
+                resolve(res);
+              }
             }
-          }
-        );
-        Readable.from(file.buffer!).pipe(stream);
-      });
-    } else {
-      throw new Error('Invalid file payload: neither buffer nor path provided');
+          );
+          Readable.from(file.buffer!).pipe(stream);
+        });
+      } else {
+        throw new Error('Invalid file payload: neither buffer nor path provided');
+      }
+
+      logger.info(
+        { secureUrl: result.secure_url, publicId: result.public_id },
+        'Asset successfully uploaded to Cloudinary'
+      );
+
+      return result.secure_url;
+    } catch (cloudErr: any) {
+      logger.warn(
+        { err: cloudErr?.message, originalname: file.originalname },
+        'Cloudinary upload failed; falling back seamlessly to local storage'
+      );
+      return this.localStorage.save(file);
     }
-
-    logger.info(
-      { secureUrl: result.secure_url, publicId: result.public_id },
-      'Asset successfully uploaded to Cloudinary'
-    );
-
-    return result.secure_url;
   }
 
   async getReadStream(key: string): Promise<Readable> {
