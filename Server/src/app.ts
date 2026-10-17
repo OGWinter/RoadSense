@@ -14,10 +14,23 @@ export const createApp = (): Application => {
   // 1. Security Headers
   app.use(helmet());
 
-  // 2. CORS Configuration
+  // 2. CORS Configuration — supports multiple comma-separated origins
+  const allowedOrigins = [
+    env.CLIENT_ORIGIN,
+    ...(env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()) : [])
+  ].filter(Boolean);
+
   app.use(
     cors({
-      origin: env.CLIENT_ORIGIN,
+      origin: (requestOrigin, callback) => {
+        // Allow requests with no origin (curl, Postman, server-to-server)
+        if (!requestOrigin) return callback(null, true);
+        // Allow any vercel.app preview URL
+        if (requestOrigin.endsWith('.vercel.app')) return callback(null, true);
+        // Allow any explicitly listed origin
+        if (allowedOrigins.includes(requestOrigin)) return callback(null, true);
+        callback(new Error(`CORS blocked: ${requestOrigin}`));
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization']
