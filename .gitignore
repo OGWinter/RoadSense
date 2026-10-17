@@ -24,7 +24,6 @@ yarn-error.log*
 
 # ─── Uploads / Media ─────────────────────────────────────
 Server/uploads/
-uploads/
 
 # ─── OS Files ────────────────────────────────────────────
 .DS_Store
