@@ -7,6 +7,9 @@ export let mockIssues: Issue[] = [];
 
 const UPLOADS_STORAGE_KEY = 'roadsense_mock_uploads';
 
+// In-memory uploads list - no dummy items
+export let mockUploads: UploadItem[] = [];
+
 export function getStoredMockUploads(): UploadItem[] {
   try {
     const raw = localStorage.getItem(UPLOADS_STORAGE_KEY);
@@ -24,9 +27,6 @@ export function saveStoredMockUploads(items: UploadItem[]) {
     localStorage.setItem(UPLOADS_STORAGE_KEY, JSON.stringify(items));
   } catch {}
 }
-
-// In-memory uploads list with localStorage initial state
-export let mockUploads: UploadItem[] = getStoredMockUploads();
 
 export function getMockDashboardStats(): DashboardStats {
   return {
