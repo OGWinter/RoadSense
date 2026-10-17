@@ -1,0 +1,53 @@
+{
+  "name": "roadsense-backend",
+  "version": "1.0.0",
+  "description": "Production-oriented backend for RoadSense pothole and road-damage monitoring platform",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "seed": "tsx src/seed.ts",
+    "test:smoke": "tsx src/test-smoke.ts",
+    "test:integration": "tsx src/test-integration-e2e.ts"
+  },
+  "keywords": [
+    "roadsense",
+    "pothole",
+    "road-damage",
+    "express",
+    "typescript",
+    "mongodb",
+    "mongoose"
+  ],
+  "author": "RoadSense Team",
+  "license": "ISC",
+  "dependencies": {
+    "@types/nodemailer": "^8.0.2",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^10.1.2",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.10.7",
+    "pino-pretty": "^13.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
